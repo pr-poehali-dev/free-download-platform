@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import Icon from '@/components/ui/icon';
 
 interface Game {
@@ -16,46 +18,114 @@ interface Game {
   trailer: string;
   description: string;
   releaseDate: string;
-  isFavorite?: boolean;
 }
 
-const mockGames: Game[] = [
-  {
-    id: 1,
-    title: 'Cyber Nexus 2077',
-    genre: 'RPG / Action',
-    rating: 9.2,
-    image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/3405c5d9-ba4f-4761-bb10-91060e2f21f8.jpg',
-    trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    description: 'Футуристическая киберпанк RPG с открытым миром, где ваш выбор определяет судьбу города',
-    releaseDate: '2025',
-  },
-  {
-    id: 2,
-    title: 'Dragon Legacy',
-    genre: 'RPG / Fantasy',
-    rating: 9.5,
-    image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/6b1b4a95-cf38-4a93-a94d-648fe4549706.jpg',
-    trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    description: 'Эпическое средневековое фэнтези приключение с драконами и магией',
-    releaseDate: '2025',
-  },
-  {
-    id: 3,
-    title: 'Stellar Conflict',
-    genre: 'Shooter / Sci-Fi',
-    rating: 8.9,
-    image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/f71b6c35-2eeb-405f-93e7-b55f2399493c.jpg',
-    trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-    description: 'Космический шутер с невероятной графикой и динамичным геймплеем',
-    releaseDate: '2025',
-  },
-];
+const API_URL = 'https://functions.poehali.dev/1a5a056d-57ae-42eb-8427-9ff10a399f52';
 
 const Index = () => {
+  const [games, setGames] = useState<Game[]>([]);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const [newGame, setNewGame] = useState({
+    title: '',
+    genre: '',
+    rating: 0,
+    image: '',
+    trailer: '',
+    description: '',
+    releaseDate: '2025'
+  });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    loadGames();
+  }, []);
+
+  const loadGames = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      setGames(data);
+    } catch (error) {
+      console.error('Error loading games:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleAddGame = async () => {
+    try {
+      const gameData: any = { ...newGame };
+
+      if (selectedFile) {
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          gameData.imageFile = reader.result as string;
+          gameData.imageType = selectedFile.type.split('/')[1];
+
+          await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(gameData)
+          });
+
+          setIsAdminOpen(false);
+          setNewGame({
+            title: '',
+            genre: '',
+            rating: 0,
+            image: '',
+            trailer: '',
+            description: '',
+            releaseDate: '2025'
+          });
+          setSelectedFile(null);
+          loadGames();
+        };
+        reader.readAsDataURL(selectedFile);
+      } else if (newGame.image) {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(gameData)
+        });
+
+        setIsAdminOpen(false);
+        setNewGame({
+          title: '',
+          genre: '',
+          rating: 0,
+          image: '',
+          trailer: '',
+          description: '',
+          releaseDate: '2025'
+        });
+        loadGames();
+      }
+    } catch (error) {
+      console.error('Error adding game:', error);
+    }
+  };
+
+  const handleDeleteGame = async (gameId: number) => {
+    try {
+      await fetch(`${API_URL}?id=${gameId}`, { method: 'DELETE' });
+      loadGames();
+    } catch (error) {
+      console.error('Error deleting game:', error);
+    }
+  };
 
   const toggleFavorite = (gameId: number) => {
     setFavorites(prev => 
@@ -63,13 +133,12 @@ const Index = () => {
     );
   };
 
-  const filteredGames = mockGames
-    .filter(game => {
-      const matchesTab = activeTab === 'favorites' ? favorites.includes(game.id) : true;
-      const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           game.genre.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesTab && matchesSearch;
-    });
+  const filteredGames = games.filter(game => {
+    const matchesTab = activeTab === 'favorites' ? favorites.includes(game.id) : true;
+    const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         game.genre.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,10 +161,97 @@ const Index = () => {
               <Icon name="Trophy" className="mr-2" size={20} />
               Топ
             </Button>
-            <Button variant="ghost" className="text-foreground hover:text-primary">
-              <Icon name="User" className="mr-2" size={20} />
-              Профиль
-            </Button>
+            <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="bg-primary hover:bg-primary/90">
+                  <Icon name="Plus" className="mr-2" size={20} />
+                  Добавить игру
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl bg-card border-primary/30 max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle className="text-2xl font-bold">Добавить новую игру</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label>Название игры</Label>
+                    <Input
+                      placeholder="Название"
+                      value={newGame.title}
+                      onChange={(e) => setNewGame({ ...newGame, title: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Жанр</Label>
+                    <Input
+                      placeholder="RPG / Action"
+                      value={newGame.genre}
+                      onChange={(e) => setNewGame({ ...newGame, genre: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Рейтинг (0-10)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="10"
+                      step="0.1"
+                      value={newGame.rating}
+                      onChange={(e) => setNewGame({ ...newGame, rating: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Обложка игры</Label>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="cursor-pointer"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">или укажите URL изображения:</p>
+                    <Input
+                      placeholder="https://example.com/image.jpg"
+                      value={newGame.image}
+                      onChange={(e) => setNewGame({ ...newGame, image: e.target.value })}
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label>Ссылка на трейлер (YouTube embed)</Label>
+                    <Input
+                      placeholder="https://www.youtube.com/embed/..."
+                      value={newGame.trailer}
+                      onChange={(e) => setNewGame({ ...newGame, trailer: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Описание</Label>
+                    <Textarea
+                      placeholder="Описание игры"
+                      value={newGame.description}
+                      onChange={(e) => setNewGame({ ...newGame, description: e.target.value })}
+                      rows={4}
+                    />
+                  </div>
+                  <div>
+                    <Label>Год выхода</Label>
+                    <Input
+                      placeholder="2025"
+                      value={newGame.releaseDate}
+                      onChange={(e) => setNewGame({ ...newGame, releaseDate: e.target.value })}
+                    />
+                  </div>
+                  <Button 
+                    onClick={handleAddGame} 
+                    className="w-full bg-primary hover:bg-primary/90"
+                    disabled={!newGame.title || !newGame.genre || !newGame.description || (!selectedFile && !newGame.image)}
+                  >
+                    <Icon name="Plus" className="mr-2" size={20} />
+                    Добавить игру
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </nav>
         </div>
       </header>
@@ -165,110 +321,132 @@ const Index = () => {
             </TabsList>
 
             <TabsContent value={activeTab}>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {filteredGames.map((game) => (
-                  <Card 
-                    key={game.id} 
-                    className="bg-card border-border overflow-hidden group cursor-pointer card-glow transition-all duration-300 hover:scale-105"
-                  >
-                    <div className="relative">
-                      <img 
-                        src={game.image} 
-                        alt={game.title}
-                        className="w-full h-64 object-cover"
-                      />
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        <Button
-                          size="icon"
-                          variant="secondary"
-                          className="bg-card/80 backdrop-blur-sm hover:bg-primary hover:scale-110 transition-all"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavorite(game.id);
-                          }}
-                        >
-                          <Icon 
-                            name={favorites.includes(game.id) ? "Heart" : "Heart"} 
-                            className={favorites.includes(game.id) ? "fill-accent text-accent" : ""}
-                            size={20} 
-                          />
-                        </Button>
-                      </div>
-                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                        <Badge className="bg-primary/80 text-primary-foreground mb-2">
-                          {game.genre}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
-                          {game.title}
-                        </h3>
-                        <div className="flex items-center gap-1 bg-secondary/20 px-3 py-1 rounded-full">
-                          <Icon name="Star" className="text-secondary fill-secondary" size={16} />
-                          <span className="text-secondary font-bold">{game.rating}</span>
+              {isLoading ? (
+                <div className="text-center py-20">
+                  <Icon name="Loader2" className="mx-auto text-primary mb-4 animate-spin" size={64} />
+                  <p className="text-muted-foreground">Загрузка игр...</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredGames.map((game) => (
+                    <Card 
+                      key={game.id} 
+                      className="bg-card border-border overflow-hidden group cursor-pointer card-glow transition-all duration-300 hover:scale-105"
+                    >
+                      <div className="relative">
+                        <img 
+                          src={game.image} 
+                          alt={game.title}
+                          className="w-full h-64 object-cover"
+                        />
+                        <div className="absolute top-4 right-4 flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="secondary"
+                            className="bg-card/80 backdrop-blur-sm hover:bg-primary hover:scale-110 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(game.id);
+                            }}
+                          >
+                            <Icon 
+                              name="Heart"
+                              className={favorites.includes(game.id) ? "fill-accent text-accent" : ""}
+                              size={20} 
+                            />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            className="bg-destructive/80 backdrop-blur-sm hover:bg-destructive hover:scale-110 transition-all"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm('Удалить эту игру?')) {
+                                handleDeleteGame(game.id);
+                              }
+                            }}
+                          >
+                            <Icon name="Trash2" size={20} />
+                          </Button>
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                          <Badge className="bg-primary/80 text-primary-foreground mb-2">
+                            {game.genre}
+                          </Badge>
                         </div>
                       </div>
                       
-                      <p className="text-muted-foreground mb-4 line-clamp-2">
-                        {game.description}
-                      </p>
+                      <div className="p-6">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            {game.title}
+                          </h3>
+                          <div className="flex items-center gap-1 bg-secondary/20 px-3 py-1 rounded-full">
+                            <Icon name="Star" className="text-secondary fill-secondary" size={16} />
+                            <span className="text-secondary font-bold">{game.rating}</span>
+                          </div>
+                        </div>
+                        
+                        <p className="text-muted-foreground mb-4 line-clamp-2">
+                          {game.description}
+                        </p>
 
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Icon name="Calendar" size={16} />
-                          {game.releaseDate}
-                        </span>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                              <Icon name="Play" className="mr-2" size={18} />
-                              Трейлер
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="max-w-4xl bg-card border-primary/30">
-                            <DialogHeader>
-                              <DialogTitle className="text-2xl font-bold">{game.title}</DialogTitle>
-                            </DialogHeader>
-                            <div className="aspect-video">
-                              <iframe
-                                width="100%"
-                                height="100%"
-                                src={game.trailer}
-                                title={game.title}
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="rounded-lg"
-                              ></iframe>
-                            </div>
-                            <div className="space-y-4">
-                              <div>
-                                <h4 className="font-bold text-lg mb-2 text-primary">Описание</h4>
-                                <p className="text-muted-foreground">{game.description}</p>
-                              </div>
-                              <div className="flex gap-4">
-                                <div>
-                                  <span className="text-muted-foreground">Жанр: </span>
-                                  <Badge className="bg-primary/20 text-primary">{game.genre}</Badge>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground flex items-center gap-2">
+                            <Icon name="Calendar" size={16} />
+                            {game.releaseDate}
+                          </span>
+                          {game.trailer && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                                  <Icon name="Play" className="mr-2" size={18} />
+                                  Трейлер
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-4xl bg-card border-primary/30">
+                                <DialogHeader>
+                                  <DialogTitle className="text-2xl font-bold">{game.title}</DialogTitle>
+                                </DialogHeader>
+                                <div className="aspect-video">
+                                  <iframe
+                                    width="100%"
+                                    height="100%"
+                                    src={game.trailer}
+                                    title={game.title}
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowFullScreen
+                                    className="rounded-lg"
+                                  ></iframe>
                                 </div>
-                                <div>
-                                  <span className="text-muted-foreground">Рейтинг: </span>
-                                  <span className="text-secondary font-bold">{game.rating}/10</span>
+                                <div className="space-y-4">
+                                  <div>
+                                    <h4 className="font-bold text-lg mb-2 text-primary">Описание</h4>
+                                    <p className="text-muted-foreground">{game.description}</p>
+                                  </div>
+                                  <div className="flex gap-4">
+                                    <div>
+                                      <span className="text-muted-foreground">Жанр: </span>
+                                      <Badge className="bg-primary/20 text-primary">{game.genre}</Badge>
+                                    </div>
+                                    <div>
+                                      <span className="text-muted-foreground">Рейтинг: </span>
+                                      <span className="text-secondary font-bold">{game.rating}/10</span>
+                                    </div>
+                                  </div>
                                 </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
 
-              {filteredGames.length === 0 && (
+              {filteredGames.length === 0 && !isLoading && (
                 <div className="text-center py-20">
                   <Icon name={searchQuery ? "SearchX" : "HeartCrack"} className="mx-auto text-muted-foreground mb-4" size={64} />
                   <h3 className="text-2xl font-bold text-muted-foreground mb-2">
