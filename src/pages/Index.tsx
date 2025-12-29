@@ -27,7 +27,7 @@ const mockGames: Game[] = [
     image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/3405c5d9-ba4f-4761-bb10-91060e2f21f8.jpg',
     trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'Футуристическая киберпанк RPG с открытым миром, где ваш выбор определяет судьбу города',
-    releaseDate: '2024',
+    releaseDate: '2025',
   },
   {
     id: 2,
@@ -37,7 +37,7 @@ const mockGames: Game[] = [
     image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/6b1b4a95-cf38-4a93-a94d-648fe4549706.jpg',
     trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'Эпическое средневековое фэнтези приключение с драконами и магией',
-    releaseDate: '2024',
+    releaseDate: '2025',
   },
   {
     id: 3,
@@ -47,7 +47,7 @@ const mockGames: Game[] = [
     image: 'https://cdn.poehali.dev/projects/a786bdb9-5d1f-4bd5-8347-dff577f3dd67/files/f71b6c35-2eeb-405f-93e7-b55f2399493c.jpg',
     trailer: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
     description: 'Космический шутер с невероятной графикой и динамичным геймплеем',
-    releaseDate: '2024',
+    releaseDate: '2025',
   },
 ];
 
@@ -99,7 +99,7 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h2 className="text-6xl md:text-7xl font-bold mb-6 neon-glow">
-              ЛУЧШИЕ ИГРЫ 2024
+              ЛУЧШИЕ ИГРЫ 2025
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
               Откройте мир невероятных приключений с нашим каталогом топовых игр
@@ -263,7 +263,7 @@ const Index = () => {
             <span className="text-2xl font-bold neon-glow">GAME ZONE</span>
           </div>
           <p className="text-muted-foreground">
-            Ваш портал в мир лучших игр © 2024
+            Ваш портал в мир лучших игр © 2025
           </p>
         </div>
       </footer>
