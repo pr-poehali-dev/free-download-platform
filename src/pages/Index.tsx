@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import Icon from '@/components/ui/icon';
 
 interface Game {
@@ -54,6 +55,7 @@ const mockGames: Game[] = [
 const Index = () => {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const toggleFavorite = (gameId: number) => {
     setFavorites(prev => 
@@ -61,9 +63,13 @@ const Index = () => {
     );
   };
 
-  const filteredGames = activeTab === 'favorites' 
-    ? mockGames.filter(game => favorites.includes(game.id))
-    : mockGames;
+  const filteredGames = mockGames
+    .filter(game => {
+      const matchesTab = activeTab === 'favorites' ? favorites.includes(game.id) : true;
+      const matchesSearch = game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           game.genre.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesTab && matchesSearch;
+    });
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,6 +126,28 @@ const Index = () => {
 
       <section className="py-12">
         <div className="container mx-auto px-4">
+          <div className="max-w-2xl mx-auto mb-12">
+            <div className="relative">
+              <Icon name="Search" className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+              <Input
+                type="text"
+                placeholder="Поиск игр по названию или жанру..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 pr-4 py-6 text-lg bg-card border-border focus:border-primary transition-colors"
+              />
+              {searchQuery && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <Icon name="X" size={20} />
+                </Button>
+              )}
+            </div>
+          </div>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-3 mb-12 bg-card">
               <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
@@ -240,14 +268,14 @@ const Index = () => {
                 ))}
               </div>
 
-              {activeTab === 'favorites' && filteredGames.length === 0 && (
+              {filteredGames.length === 0 && (
                 <div className="text-center py-20">
-                  <Icon name="HeartCrack" className="mx-auto text-muted-foreground mb-4" size={64} />
+                  <Icon name={searchQuery ? "SearchX" : "HeartCrack"} className="mx-auto text-muted-foreground mb-4" size={64} />
                   <h3 className="text-2xl font-bold text-muted-foreground mb-2">
-                    Пока нет избранных игр
+                    {searchQuery ? 'Ничего не найдено' : 'Пока нет избранных игр'}
                   </h3>
                   <p className="text-muted-foreground">
-                    Добавьте игры в избранное, нажав на иконку сердца
+                    {searchQuery ? 'Попробуйте изменить запрос' : 'Добавьте игры в избранное, нажав на иконку сердца'}
                   </p>
                 </div>
               )}
