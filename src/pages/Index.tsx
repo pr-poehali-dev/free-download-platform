@@ -261,7 +261,7 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h2 className="text-6xl md:text-7xl font-bold mb-6 neon-glow">
-              ЛУЧШИЕ ИГРЫ 2025
+              ЛУЧШИЕ ИГРЫ
             </h2>
             <p className="text-xl text-muted-foreground mb-8">
               Откройте мир невероятных приключений с нашим каталогом топовых игр
